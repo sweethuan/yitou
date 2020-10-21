@@ -1,0 +1,1176 @@
+<template>
+	<div class="container">
+		<div class="page-title-img">云南中机集团数据可视化系统</div>
+		<div class="left">
+			<div class="charts-border age-border">
+				<div class="charts-title">年龄分析</div>
+				<div class="age-histogram" ref="age-histogram"></div>
+			</div>
+			<div class="charts-border gender-border">
+				<div class="charts-title">性别分析</div>
+				<div class="gender-piechart" ref="gender-piechart"></div>
+			</div>
+		</div>
+		<div class="center">
+			<div class="charts-border-center park-border">
+				<div class="map-wrap">
+					<div class="map_container" id="vmap_container">
+						<div class="loading" v-show="isShowLoad">
+							<Spin fix>
+								<!-- <Icon type="load-c" size=18 class="demo-spin-icon-load"></Icon> -->
+								<span class="demo-spin-icon-load"><i type="close" class="iconfont iconshuaxin"></i></span>
+								<div>Loading</div>
+							</Spin>
+						</div>
+						<div class="legend-list">
+							<div class="first legend"><span>一级: 0-99</span></div>
+							<div class="senod legend"><span>二级: 100-999</span></div>
+							<div class="three legend"><span>三级: 1000以上</span></div>
+						</div>
+						<div class="charts-title park-title">高频停车位置
+
+							<span class="select-city">{{city}}<img src="../../assets/icons/select.png">
+								<ul class="city-list clearfix">
+									<li :class="{active: city == '云南省'}" @click="goProvince">云南省： </li>
+									<li v-for="item in yunnanCity" :key="item.name" :class="{active: city == item.name}" @click="setCenter(item)">{{item.name}}</li>
+								</ul>
+							</span>
+							<span class="select-city "> 搜索
+								<Icon type="ios-search" />
+								<div class="city-list search">
+									<Form :model="formItem" ref="formCustom" :label-width="60">
+										<FormItem label="车型">
+											<Select v-model="formItem.model">
+												<Option :value="item=='全部' ? 'all' : item" v-for="item in cxData" :key="item">{{item}}</Option>
+											</Select>
+										</FormItem>
+										<FormItem label="车龄">
+											<Row>
+												<Col span="9">
+												<Input type="number" v-model="formItem.startAge"></Input>
+												</Col>
+												<Col span="2" style="text-align: center">--</Col>
+												<Col span="9">
+												<Input type="number" v-model="formItem.endAge"></Input>
+												</Col>
+												<Col span="4">年</Col>
+											</Row>
+										</FormItem>
+										<FormItem label="总里程">
+											<Row>
+												<Col span="9">
+												<Input type="number" v-model="formItem.startKM"></Input>
+												</Col>
+												<Col span="2" style="text-align: center">--</Col>
+												<Col span="9">
+												<Input type="number" v-model="formItem.endKM"></Input>
+												</Col>
+												<Col span="4">KM</Col>
+											</Row>
+										</FormItem>
+										<!-- <FormItem label="行驶日期">
+			                     <DatePicker 
+			  					  v-model.trim="formItem.xsks"
+			  					  type="date"
+			  					  
+			  					  placeholder="请选择开始时间" 
+			  					  clearable>
+			  					</DatePicker>
+			  					<DatePicker
+			  						v-model.trim="formItem.xsjs" 
+			  						type="date" 
+			  						placeholder="请选择结束时间" 
+			  						clearable>
+			  					</DatePicker>
+			  				</FormItem>
+			  				<FormItem label="行驶日期类型">
+			  				  <Select v-model="formItem.week">
+			  				    <Option value="all">全部</Option>
+			  				    <Option value="1">周一至周五</Option>
+			  				    <Option value="2">周六至周日</Option>
+			  				  </Select>
+			  				</FormItem>
+			                  <FormItem label="行驶时段">
+			                    <Row>
+			                      <Col span="9">
+			                      <Input type="number" v-model="formItem.startTime"></Input>
+			                      </Col>
+			                      <Col span="2" style="text-align: center">--</Col>
+			                      <Col span="9">
+			                      <Input type="number" v-model="formItem.endTime"></Input>
+			                      </Col>
+			                      <Col span="4"> 时</Col>
+			                    </Row>
+			                  </FormItem> -->
+										<!--                <FormItem>
+			                  </FormItem> -->
+									</Form>
+									<div style="padding-bottom: 6px;">
+										<Button type="primary" @click="handleReset">重置</Button>
+										<Button type="primary" style="margin-left: 28px" @click="query">提交</Button>
+									</div>
+									<!-- <div style="font-size: 12px;text-align: left;">
+			  				  说明：车型、车龄、总里程为全页面公用条件， 行驶日期类型、行驶时段为高频停车点独有条件
+			  			  </div> -->
+								</div>
+							</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="right">
+			<div class="charts-border job-border">
+				<div class="charts-title">职业分析</div>
+				<div class="job-angle" ref="job-angle"></div>
+			</div>
+			<div class="charts-border buyCar-border">
+				<div class="charts-title">购车类型</div>
+				<div class="buyCar-piechart" ref="buyCar-piechart"></div>
+			</div>
+		</div>
+		<div class="navigate" v-show="!isSysUser">
+			<div class="navigate-bg" v-show="isSelNavigate" @mouseleave="isSelNavigate = false">
+				<div class="full-screen-navigate ivu-icon" :class="isFullScreen ? 'ivu-icon-md-expand' : 'ivu-icon-md-contract'"
+				 :title="isFullScreen ? '全屏' : '退出全屏'" @click="handleChange"></div>
+				<div class="sales-navigate icon iconfont iconqiyong" title="注销" @click="Cancellation"></div>
+				<div class="drive-navigate icon iconfont iconmima" title="修改密码" @click="fromModelAll.isShow=true"></div>
+			</div>
+			<div class="navigate-icon icon iconfont iconyonghuguanli" title="个人中心" @mouseover="isSelNavigate = true" @click="isSelNavigate = !isSelNavigate"></div>
+		</div>
+		<!-- 修改密码弹窗 -->
+		<formModel ref="formChild" :fromModelAlls="fromModelAll" @formKeep="formKeep"></formModel>
+		<!-- 注销弹窗 -->
+		<popModel :popAll="popAll" @confirm="confirm"></popModel>
+	</div>
+</template>
+
+<script>
+	import {
+		clientAjaxReq
+	} from '@/util/axios.js'
+	import "@/../static/js/config"; //导入项目配置文件
+	import CryptoJS from "@/../static/js/aes.js"
+
+	export default {
+		name: 'visualization',
+		data() {
+			return {
+				map: '',
+				isSelNavigate: false,
+				isFullScreen: true,
+				isSysUser: '',
+				number: '', // 玫瑰图的放大比例
+				sum: '', // 玫瑰图的allCount
+				cluster: null, //聚合对象
+				districtSearch: null,
+				city: '云南省',
+				isShowLoad: false,
+				polygons: [],
+				sjPolygons: [],
+				yunnanCity: [],
+				markers: [], // 标记点
+				cxData: ['全部', '新宝骏E300', '新宝骏E300Plus', '新宝骏RS-3', '新宝骏RC-6', '新宝骏RM-5', '新宝骏RS-5'], // 车型数据
+				fromModelAll: {
+					isShow: false,
+					isCustomKeep: true,
+					title: "修改密码",
+					isCustomActionLog: true,
+					fromData: [{
+						type: "input",
+						key: "oldPassword",
+						label: "旧密码",
+						col: "24",
+						placeholder: "请输入旧密码",
+						message: "旧密码不能为空",
+						fromType: "password",
+						clearable: false,
+						passwordIcon: true
+					}, {
+						type: "input",
+						key: "oneNewPassword",
+						label: "新密码",
+						col: "24",
+						placeholder: "请输入新密码",
+						// message: "新密码不能为空",
+						fromType: "password",
+						clearable: false,
+						passwordIcon: true
+					}, {
+						type: "input",
+						key: "newPassword",
+						label: "确认密码",
+						col: "24",
+						placeholder: "请再确认输入一次新密码",
+						// message: "确认密码不能为空",
+						fromType: "password",
+						clearable: false,
+						passwordIcon: true
+					}],
+					menuForm: {
+						oldPassword: "",
+						oneNewPassword: "",
+						newPassword: ""
+					},
+					menuRuleValidate: {
+						oneNewPassword: [{
+							required: true,
+							trigger: "change,blur",
+							validator(rule, value, callback) {
+								var reg = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[^]{8,16}$/;
+								if (value) {
+
+									if (reg.test(value)) {
+										callback()
+									} else {
+										callback(new Error('密码至少包含大写字母，小写字母，数字，且不少于8位'))
+									}
+								} else {
+									callback("密码不能为空")
+								}
+							}
+						}],
+						newPassword: [{
+							required: true,
+							validator: (rule, value, callback) => {
+								if (this.fromModelAll.menuForm.oneNewPassword == value) {
+									callback();
+								} else {
+									callback(new Error("两次输入密码不一致"));
+								}
+							},
+							trigger: "change,blur"
+						}]
+					}
+				},
+				popAll: {
+					vTxt: "注销", //弹窗动态，如:删除、审核、启用、停用...;
+					nTxt: '?', //当前选中信息;
+					isCustomActionLog: true,
+					isPopModel: false, //弹窗显示控制;
+					isHideKeep: false //关闭按钮是否隐藏 默认为false显示 可不写;
+				},
+				formItem: {
+					model: 'all',
+					startAge: '',
+					endAge: '',
+					startKM: '',
+					endKM: '',
+					xsks: '',
+					xsjs: '',
+					week: 'all',
+					startTime: '',
+					endTime: ''
+				},
+				ageCharts: null, // 年龄分析图表对象
+				genderCharts: null, // 性别分析图表对象
+				jobCharts: null, // 职业分析图表对象
+				buyCarCharts: null, // 购车分析图表对象
+				ageOption: {
+					title: {
+						left: "center",
+						top: '8%',
+						textStyle: {
+							color: '#fff',
+							fontSize: 15
+						}
+					},
+					tooltip: {
+						trigger: 'axis',
+						textStyle: {
+							color: "#fffeff",
+							fontSize: 12
+						},
+						show: true,
+						axisPointer: {
+							lineStyle: {
+								color: "#898ea4",
+								type: "dashed"
+							}
+						},
+						formatter: function(params) {
+							return params[0].name + '岁: ' + params[0].value + '人'
+						}
+					},
+					xAxis: {
+						axisLine: {
+							lineStyle: {
+								color: '#9b9fb1'
+							}
+						},
+						axisTick: {
+							inside: true
+						},
+						axisLabel: {
+							color: '#fff',
+							interval: 0,
+							rotate: 45,
+						},
+						name: "岁",
+						data: []
+					},
+					yAxis: {
+						axisLine: {
+							lineStyle: {
+								color: '#9b9fb1'
+							}
+						},
+						axisLabel: {
+							color: '#fff'
+						},
+						name: "人",
+						nameTextStyle: {
+							color: "#fff"
+						},
+						axisTick: {
+							alignWithLabel: true,
+							"show": false
+						},
+						splitLine: {
+							show: true,
+							lineStyle: {
+								color: ['#081e65'],
+								width: 1,
+								type: 'solid'
+							}
+						},
+						//data: ["100", "200", "300", "400", "500"]
+					},
+					color: ['#2ed5f5'],
+					series: [{
+						name: '人数',
+						type: 'bar',
+						itemStyle: {
+							barBorderRadius: [4, 4, 0, 0],
+						},
+						barMaxWidth: 20,
+						barMinHeight: 2,
+						data: []
+					}]
+				},
+				genderOption: {
+					title: {
+						left: "center",
+						top: '8%',
+						textStyle: {
+							color: '#fff',
+							fontSize: 15
+						}
+					},
+					tooltip: {
+						trigger: 'item',
+						formatter: "{b}: {c}人,<br/> {d}%",
+						textStyle: { //图例文字的样式
+							color: '#fff', //文字颜色
+							fontSize: 10 //文字大小
+						}
+					},
+					//圆环的颜色
+					color: ['#1189ff', '#e0e43c', '#2ed5f5'],
+					// 图例
+					legend: {
+						selectedMode: true,
+						bottom: "10%",
+						right: "5%",
+						itemWidth: 10, //图例标记的图形宽度
+						itemHeight: 10, //图例标记的图形高度
+						data: [],
+						textStyle: { //图例文字的样式
+							color: '#fff', //文字颜色
+							fontSize: 10 //文字大小
+						}
+					},
+					series: [{
+						name: '', //代表a的值，系列名称
+						type: 'pie',
+						center: ['50%', '50%'],
+						radius: ['36%', '58%'],
+						avoidLabelOverlap: false,
+						label: {
+							normal: {
+								show: true, //是否显示标签
+								position: 'left',
+								//formatter: "{b}: {c}人 <br/> {d}%",
+								formatter: "{b}: {c}人,\n {d}%",
+								color: "rgba(255, 255, 255, 1)",
+							},
+
+							emphasis: {
+								//鼠标放在圆环上显示的标签样式
+								show: true,
+								textStyle: {
+									fontSize: '12',
+									fontWeight: 'bold'
+								}
+							}
+						},
+						labelLine: {
+							show: true, //是否显示引导线
+							length: 10, //百分比引导线
+							length2: 20, //视觉引导项第二段的长度。
+							lineStyle: {
+								color: "rgba(255, 255, 255, 1)"
+							}
+						},
+						itemStyle: {
+							normal: {
+								borderWidth: 4,
+								borderColor: "#040f3d",
+								label: {
+									show: true,
+									formatter: '{d}%'
+								},
+							}
+						},
+						// 系列中的数据内容数组。
+						data: []
+					}]
+				},
+				jobOption: {
+					title: {
+						left: "center",
+						top: '8%',
+						textStyle: {
+							color: '#fff',
+							fontSize: 15
+						}
+					},
+					tooltip: {
+						trigger: 'item',
+						formatter: (param) => {
+							return param.name + ": " + (param.value - this.number) + "人, <br/>" + (((param.value - this.number) /
+								this.sum) * 100).toFixed(2) + "%"
+						}
+					},
+					color: ['#ff8300', '#3af9fb', "#1189ff", "#e0e43c", "#9966FF", "#2DD983"],
+					legend: {
+						orient: 'vertical', // 标签名称垂直排列
+						x: '70%', // 标签的位置
+						//y: 'bottom',
+						bottom: "2%",
+						itemWidth: 10, //图例标记的图形宽度
+						itemHeight: 10, //图例标记的图形高度
+						textStyle: {
+							color: "#fff",
+							fontSize: 10
+						},
+						data: [],
+						formatter: (param) => {
+							return param
+
+						}
+					}, // 标签变量名称
+					calculable: true,
+					series: [{
+						name: '', // 图表名称
+						type: 'pie', // 图表类型
+						radius: ["25%", "50%"], // 图表内外半径大小
+						center: ['40%', '50%'], // 图表位置
+						roseType: 'area',
+						label: {
+							normal: {
+								show: true,
+								formatter: (param) => {
+									return (param.value - this.number) + "人, \n" + (((param.value - this.number) / this.sum) * 100)
+										.toFixed(2) + "%"
+								},
+								color: "rgba(255, 255, 255, 1)"
+							}
+						},
+						labelLine: {
+							show: true, //是否显示引导线
+							length: 3, //百分比引导线
+							length2: 10, //视觉引导项第二段的长度。
+							lineStyle: {
+								color: "rgba(255, 255, 255, 1)"
+							}
+						},
+						data: []
+					}]
+				},
+				buyCarOption: {
+					title: {
+						left: "center",
+						top: '8%',
+						textStyle: {
+							color: '#fff',
+							fontSize: 15
+						}
+					},
+					tooltip: {
+						trigger: 'item',
+						formatter: "{b}: {c}人,<br/> {d}%",
+						textStyle: { //图例文字的样式
+							color: '#fff', //文字颜色
+							fontSize: 10 //文字大小
+						}
+					},
+					//圆环的颜色
+					color: ["#1189ff", "#e0e43c", '#3af9fb'],
+					// 图例
+					legend: {
+						selectedMode: true,
+						bottom: "10%",
+						right: "5%",
+						itemWidth: 10, //图例标记的图形宽度
+						itemHeight: 10, //图例标记的图形高度
+						data: [],
+						textStyle: { //图例文字的样式
+							color: '#fff', //文字颜色
+							fontSize: 10 //文字大小
+						}
+					},
+					series: [{
+						name: '', //代表a的值，系列名称
+						type: 'pie',
+						center: ['50%', '50%'],
+						radius: ['0', '55%'],
+						avoidLabelOverlap: false,
+						label: {
+							normal: {
+								show: true, //是否显示标签
+								position: 'left',
+								//formatter: "{b}: {c}人 <br/> {d}%",
+								formatter: "{b}: {c}人,\n {d}%",
+								color: "rgba(255, 255, 255, 1)"
+
+							},
+
+							emphasis: {
+								//鼠标放在圆环上显示的标签样式
+								show: true,
+								textStyle: {
+									fontSize: '12',
+									fontWeight: 'bold'
+								}
+							}
+						},
+						labelLine: {
+							show: true, //是否显示引导线
+							length: 10, //百分比引导线
+							length2: 20, //视觉引导项第二段的长度。
+
+							lineStyle: {
+								color: "rgba(255, 255, 255, 1)"
+							}
+						},
+						itemStyle: {
+							normal: {
+								borderWidth: 2,
+								borderColor: "#040f3d",
+								label: {
+									show: true,
+									formatter: '{d}%'
+								},
+							}
+						},
+						// 系列中的数据内容数组。
+						data: []
+					}]
+				},
+			}
+		},
+		mounted() {
+			sessionStorage.setItem("callerName", '首页')
+			this.isShowLoad = true
+			this.isSysUser = sessionStorage.getItem('userId') == 'adminguid'
+
+			if (!this.isSysUser) {
+				this.handleChange(); // 非超级管理员全屏显示
+			}
+
+			this.$nextTick(() => {
+				this.ageHistogram()
+				this.genderPiechart()
+				this.jobAngle()
+				this.buyCarPiechart()
+			})
+			this.parkCount()
+			//this.getTctj()
+
+			window.addEventListener('resize', () => {
+				//console.log(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen)
+				if (document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.fullScreen ||
+					document.mozFullScreen || document.webkitIsFullScreen) {
+					this.isFullScreen = false
+				} else {
+					this.isFullScreen = true
+				}
+				if (this.ageCharts && this.genderCharts && this.jobCharts && this.buyCarCharts) {
+					this.ageCharts.resize()
+					this.genderCharts.resize()
+					this.jobCharts.resize()
+					this.buyCarCharts.resize()
+				}
+			})
+			document.onkeydown = (event) => { //监听整个键盘的onkeydown事件
+				if (event.keyCode == 122) {
+					event.preventDefault(); //阻止浏览器的默认行为
+					this.handleChange(); //调用H5的api
+				}
+			};
+			//加载高德地图
+			this.map = new AMap.Map('vmap_container', {
+				resizeEnable: true,
+				mapStyle: 'amap://styles/7e08e50c3cbb10615764f6bdc64a0a26',
+				center: [102.560965, 24.869741],
+				zoom: 7,
+			});
+			//加载UI组件库
+			AMapUI.loadUI(['control/BasicControl'], (BasicControl) => {
+				//缩放控件
+				this.map.addControl(new BasicControl.Zoom({
+					position: 'rb', //right bottom
+					showZoomNum: true
+				}));
+			});
+
+
+			// 加载插件
+			AMap.plugin(['AMap.MarkerClusterer', 'AMap.DistrictSearch', "AMap.Scale"], () => {
+				this.map.addControl(new AMap.Scale());
+				this.districtSearch = new AMap.DistrictSearch({
+					// 关键字对应的行政区级别，country表示国家
+					level: 'province',
+					//  显示下级行政区级数，1表示返回下一级行政区
+					subdistrict: 1,
+					extensions: 'all'
+				})
+				// 搜索所有省/直辖市信息
+				this.districtSearch.search('云南', (status, result) => {
+					this.yunnanCity = result.districtList[0].districtList
+					//this.yunnanCity.unshift({name: '云南 ',cityCode: [], level: "province",adcode: "530000", center:  result.districtList[0].center, boundaries:result.districtList[0].boundaries})
+					// 获取边界信息
+					let bounds = result.districtList[0].boundaries
+					if (bounds) {
+						for (var i = 0, l = bounds.length; i < l; i++) {
+							//生成行政区划polygon
+							var polygon = new AMap.Polygon({
+								map: this.map,
+								strokeWeight: 2,
+								path: bounds[i],
+								fillColor: 'transparent',
+								fillOpacity: 0.2,
+								strokeColor: '#CC66CC'
+							})
+							this.sjPolygons.push(polygon)
+						}
+						// 地图自适应
+						this.map.setZoom(7)
+						this.map.setCenter([102.560965, 24.869741])
+					}
+				})
+			})
+
+		},
+		methods: {
+			// 获取年龄分析图表
+			ageHistogram() {
+				sessionStorage.setItem("actionName", "首页-年龄统计查询")
+				this.ageCharts = echarts.init(this.$refs["age-histogram"]);
+				this.ageCharts.showLoading({
+					text: '',
+					color: '#2d8cf0',
+					textColor: '#000',
+					maskColor: 'rgba(4,15,61,.8)',
+					zlevel: 0,
+				})
+
+				let params = {
+					vehiclesystem: this.formItem.model,
+					clmin: this.formItem.startAge,
+					clmax: this.formItem.endAge,
+					lcsmin: this.formItem.startKM,
+					lcsmax: this.formItem.endKM
+				}
+
+				this.ageOption.title.text = ''
+				this.ageOption.xAxis.data = []
+				this.ageOption.series[0].data = []
+
+				clientAjaxReq("/xssj/getNltj", params, (state, rspMsg, rspData) => {
+					this.userActionLog("首页-年龄统计查询")
+					if (state != 'SUCCESS') {
+						this.$Message.error(rspMsg);
+					} else {
+						setTimeout(() => {
+							this.ageCharts.hideLoading()
+							this.ageOption.title.text = `样本数: ${rspData.allCount}`
+
+							rspData.list.forEach(item => {
+								this.ageOption.xAxis.data.push(item.name)
+								this.ageOption.series[0].data.push(item.count)
+
+							})
+
+							this.ageCharts.setOption(this.ageOption, true);
+						}, 3000)
+					}
+				})
+
+
+			},
+			// 获取性别分析图表
+			genderPiechart() {
+				sessionStorage.setItem("actionName", "首页-性别统计查询")
+				this.genderCharts = echarts.init(this.$refs["gender-piechart"])
+				this.genderCharts.showLoading({
+					text: '',
+					color: '#2d8cf0',
+					textColor: '#000',
+					maskColor: 'rgba(4,15,61,.8)',
+					zlevel: 0,
+				})
+				let params = {
+					vehiclesystem: this.formItem.model,
+					clmin: this.formItem.startAge,
+					clmax: this.formItem.endAge,
+					lcsmin: this.formItem.startKM,
+					lcsmax: this.formItem.endKM
+				}
+				clientAjaxReq("/xssj/getXbtj", params, (state, rspMsg, rspData) => {
+					this.userActionLog("首页-性别统计查询")
+					if (state != 'SUCCESS') {
+						this.$Message.error(rspMsg);
+					} else {
+						setTimeout(() => {
+							this.genderCharts.hideLoading()
+							let allCount = 0
+							this.genderOption.legend.data = []
+							this.genderOption.series[0].data = []
+
+							rspData.forEach(item => {
+								if (item.xb == '男' || item.xb == '女') {
+									allCount += item.cnt
+									this.genderOption.legend.data.push(item.xb)
+									this.genderOption.series[0].data.push({
+										value: item.cnt,
+										name: item.xb
+									})
+								}
+							})
+							this.genderOption.title.text = `样本数: ${allCount}`
+
+							this.genderCharts.setOption(this.genderOption, true);
+						}, 3000)
+					}
+				})
+
+			},
+			// 获取职业分析图表
+			jobAngle() {
+				sessionStorage.setItem("actionName", "首页-职业统计查询")
+				this.jobCharts = echarts.init(this.$refs["job-angle"])
+				this.jobCharts.showLoading({
+					text: '',
+					color: '#2d8cf0',
+					maskColor: 'rgba(4,15,61,.8)',
+					zlevel: 0,
+				})
+				let params = {
+					vehiclesystem: this.formItem.model,
+					clmin: this.formItem.startAge,
+					clmax: this.formItem.endAge,
+					lcsmin: this.formItem.startKM,
+					lcsmax: this.formItem.endKM
+				}
+				clientAjaxReq("/xssj/getZytj", params, (state, rspMsg, rspData) => {
+					this.userActionLog("首页-职业统计查询")
+					if (state != 'SUCCESS') {
+						this.$Message.error(rspMsg);
+					} else {
+						setTimeout(() => {
+							this.jobCharts.hideLoading()
+							let allCount = 0
+							let showData = []
+							let max = 0
+							this.jobOption.legend.data = []
+							rspData.forEach(item => {
+								if (item.zy != null) {
+									allCount += item.cnt
+
+									this.jobOption.legend.data.push(item.zy)
+
+									if (item.cnt >= max) max = item.cnt
+								}
+
+							})
+							this.sum = allCount
+							this.number = Math.round(max * 0.5)
+
+							this.jobOption.series[0].data = rspData.map(item => {
+								if (item.zy != null) {
+									return {
+										value: this.number + item.cnt,
+										name: item.zy
+									}
+								}
+							})
+
+							this.jobOption.title.text = `样本数: ${allCount}`
+
+							this.jobCharts.setOption(this.jobOption, true);
+						}, 3000)
+					}
+				})
+
+			},
+			// 获取购车类型图表
+			buyCarPiechart() {
+				sessionStorage.setItem("actionName", "首页-购车类型统计查询")
+				this.buyCarCharts = echarts.init(this.$refs["buyCar-piechart"])
+				this.buyCarCharts.showLoading({
+					text: '',
+					color: '#2d8cf0',
+					textColor: '#000',
+					maskColor: 'rgba(4,15,61,.8)',
+					zlevel: 0,
+				})
+				let params = {
+					vehiclesystem: this.formItem.model,
+					clmin: this.formItem.startAge,
+					clmax: this.formItem.endAge,
+					lcsmin: this.formItem.startKM,
+					lcsmax: this.formItem.endKM
+				}
+				clientAjaxReq("/xssj/getGclxtj", params, (state, rspMsg, rspData) => {
+					this.userActionLog("首页-购车类型统计查询")
+					if (state != 'SUCCESS') {
+						this.$Message.error(rspMsg);
+					} else {
+						setTimeout(() => {
+							this.buyCarCharts.hideLoading()
+							let allCount = 0
+							this.buyCarOption.legend.data = []
+							this.buyCarOption.series[0].data = []
+
+							rspData.forEach(item => {
+								if (item.gclx != null) {
+									allCount += item.cnt
+									this.buyCarOption.legend.data.push(item.gclx)
+									this.buyCarOption.series[0].data.push({
+										value: item.cnt,
+										name: item.gclx
+									})
+								}
+							})
+
+							this.buyCarOption.title.text = `样本数: ${allCount}`
+
+
+							this.buyCarCharts.setOption(this.buyCarOption, true);
+						}, 3000)
+					}
+				})
+
+			},
+			// 获取停车次数
+
+			parkCount() {
+				sessionStorage.setItem("actionName", "首页-高频停车统计查询")
+				this.markers = []
+				let params = {
+					vehiclesystem: this.formItem.model,
+					clmin: this.formItem.startAge,
+					clmax: this.formItem.endAge,
+					lcsmin: this.formItem.startKM,
+					lcsmax: this.formItem.endKM,
+					rqlx: this.formItem.week,
+					xssdmin: this.formItem.startTime,
+					xssdmax: this.formItem.endTime
+				}
+				clientAjaxReq("/xssj/getGptc", params, (state, rspMsg, rspData) => {
+					this.userActionLog("首页-高频停车统计查询")
+					if (state != 'SUCCESS') {
+						this.$Message.error(rspMsg);
+					} else {
+						this.isShowLoad = false
+						//console.log(rspData)
+						for (var i = 0; i < rspData.length; i += 1) {
+							this.markers.push(new AMap.Marker({
+								position: [rspData[i].jd, rspData[i].wd],
+								offset: new AMap.Pixel(-15, -15)
+							}))
+						}
+						this.addCluster()
+					}
+				})
+			},
+			// 重置
+			handleReset() {
+				for (let key in this.formItem) {
+					this.formItem[key] = ''
+				}
+			},
+			// 查询
+			query() {
+				this.isShowLoad = true
+				this.ageHistogram()
+				this.genderPiechart()
+				this.jobAngle()
+				this.buyCarPiechart()
+				this.parkCount()
+				//this.getTctj()
+			},
+			//自定义聚合图标
+			renderClusterMarker(context) {
+				var count = this.markers.length;
+				let bgColor = '#FFFFFF'
+				let bgimg = '';
+				if (context.count < 100) {
+					bgColor = '#33e5f5'
+					bgimg = 'url("https://webapi.amap.com/theme/v1.3/m1.png")';
+				} else if (context.count < 1000) {
+					bgColor = '#e0e43c'
+					bgimg = 'url("https://webapi.amap.com/theme/v1.3/m2.png")';
+				} else if (context.count >= 1000) {
+					bgColor = '#ec134e'
+					bgimg = 'url("https://webapi.amap.com/theme/v1.3/m3.png")';
+				}
+				let fontColor = '#000000';
+				let size = Math.round(60 + Math.pow(context.count / count, 1 / 5) * 20);
+
+				let div = document.createElement('div');
+				let span_animation = document.createElement("span");
+				let span_text = document.createElement("span");
+				div.style.position = 'relative';
+				div.style.backgroundImage = bgimg;
+				div.style.width = div.style.height = size + 'px';
+				div.style.borderRadius = size / 2 + 'px';
+				div.style.opacity = 0.8;
+
+				span_animation.style.width = span_animation.style.height = size + 'px';
+				span_animation.style.boxShadow = '0px 0px 20px ' + bgColor;
+
+				span_text.style.width = span_text.style.height = size + 'px';
+				span_text.style.lineHeight = size + 'px';
+				span_text.style.color = fontColor;
+				span_text.innerHTML = context.count;
+
+				div.appendChild(span_animation);
+				div.appendChild(span_text);
+				context.marker.setOffset(new AMap.Pixel(-size / 2, -size / 2));
+				context.marker.setContent(div)
+
+			},
+			//聚合标注点
+			addCluster() {
+				if (this.cluster != null) {
+					this.cluster.clearMarkers();
+				}
+
+				this.cluster = new AMap.MarkerClusterer(this.map, this.markers, {
+					gridSize: 80,
+					minClusterSize: 1,
+					renderClusterMarker: this.renderClusterMarker
+				});
+			},
+			//设置地图中心点
+			setCenter(item) {
+				this.map.remove(this.polygons) //清除上次结果
+				this.map.remove(this.sjPolygons) //清除上次结果
+				this.city = item.name
+				this.districtSearch.search(this.city, (status, result) => {
+					//console.log(result)
+					// 获取边界信息
+					let bounds = result.districtList[0].boundaries
+					if (bounds) {
+						for (var i = 0, l = bounds.length; i < l; i++) {
+							//生成行政区划polygon
+							var polygon = new AMap.Polygon({
+								map: this.map,
+								strokeWeight: 1,
+								path: bounds[i],
+								fillColor: '#80d8ff',
+								fillOpacity: 0.2,
+								strokeColor: '#CC66CC'
+							})
+							this.polygons.push(polygon)
+						}
+
+						//this.map.setFitView() // 地图自适应
+						this.map.setZoom(this.map.getZoom())
+					}
+				})
+
+				this.map.setCenter([item.center.lng, item.center.lat]);
+
+			},
+			// 绘制云南边界线
+			goProvince() {
+				this.city = '云南省'
+				this.map.remove(this.polygons) //清除上次结果
+				this.map.remove(this.sjPolygons) //清除上次结果
+				this.districtSearch.search('云南', (status, result) => {
+					// 获取边界信息
+					let bounds = result.districtList[0].boundaries
+					if (bounds) {
+						for (var i = 0, l = bounds.length; i < l; i++) {
+							//生成行政区划polygon
+							var polygon = new AMap.Polygon({
+								map: this.map,
+								strokeWeight: 2,
+								path: bounds[i],
+								fillColor: 'transparent',
+								fillOpacity: 0.2,
+								strokeColor: '#CC66CC'
+							})
+							this.sjPolygons.push(polygon)
+						}
+						// 地图自适应
+						//this.map.setFitView()
+						this.map.setZoom(7)
+						this.map.setCenter([102.560965, 24.869741])
+					}
+				})
+			},
+			//修改密码弹窗确认事件
+			formKeep(item) {
+				let reqData = {
+					password: this.getAesString(item.oldPassword),
+					newPassword: this.getAesString(item.newPassword)
+				};
+				let sendData = this.$sendData({
+					actionId: this.$UUID(),
+					actionName: "修改密码-保存",
+					callerName: "个人设置",
+					reqData: reqData,
+					sftj: true
+				});
+				this.$serverAjaxReq(
+					"/user/updateUserPwd",
+					sendData,
+					(state, rspMsg, rspData) => {
+						this.userActionLog('修改密码-保存')
+						if (state == "FAIL") {
+							this.$Message.error("查询异常！");
+						}
+						if (state == "ERROR") {
+							this.$Message.error(rspMsg);
+						}
+						if (state == "SUCCESS") {
+							this.$refs.formChild.close();
+							this.$Message.success('修改成功')
+							// 修改后从新登陆
+							setTimeout(() => {
+								sessionStorage.clear();
+								this.$router.push("/");
+							}, 1500)
+						}
+					},
+
+				);
+			},
+			// 注销弹窗启用事件
+			Cancellation() {
+				this.popAll.isPopModel = true;
+				this.popAll.nTxt = sessionStorage.getItem('userNames');
+
+			},
+			//注销确认事件
+			confirm(vTxt) {
+				this.userActionLog('注销-确认', () => {
+					sessionStorage.clear();
+				})
+				this.popAll.isPopModel = false
+				if (!this.isSysUser) {
+					this.handleChange(); // 注销时退出全屏显示
+				}
+				this.$router.push("/");
+			},
+			//密码加密事件
+			getAesString(data) {
+				if (versionControl.isPasswordEncrypted) {
+					// var key1 = "chen20190103java"; //密钥
+					// var iv1 = "chen20190103java";
+					var key = CryptoJS.enc.Utf8.parse('BaoWei@ChongQing');
+					var iv = CryptoJS.enc.Utf8.parse('BaoWei@ChongQing');
+					var encrypted = CryptoJS.AES.encrypt(data, key, {
+						iv: iv,
+						mode: CryptoJS.mode.CBC,
+						padding: CryptoJS.pad.Pkcs7
+					});
+					// console.log(encrypted.toString())
+					// console.log(this.decrypt(encrypted.toString()))
+					return encrypted.toString(); //返回的是base64格式的密文
+
+				} else {
+					return data
+				}
+
+			},
+			// 全屏事件
+			handleChange() {
+				let rfs;
+				let el;
+				if (this.isFullScreen) {
+					el = document.documentElement
+					rfs = el.requestFullScreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullScreen;
+				} else {
+					el = document;
+					rfs = el.cancelFullScreen || el.webkitCancelFullScreen || el.mozCancelFullScreen || el.exitFullScreen;
+				}
+
+				//typeof rfs != "undefined" && rfs
+				if (rfs) {
+					rfs.call(el);
+				} else if (typeof window.ActiveXObject !== "undefined") {
+					//for IE，这里其实就是模拟了按下键盘的F11，使浏览器全屏
+					let wscript = new ActiveXObject("WScript.Shell");
+					if (wscript != null) {
+						wscript.SendKeys("{F11}");
+					}
+				}
+			},
+			// 行为日志
+			userActionLog(actionName, fn) {
+				let sendData = this.$sendData({
+					actionId: this.$UUID(),
+					actionName: actionName,
+					callerName: sessionStorage.getItem("callerName"),
+					reqData: {
+						sftj: "0"
+					},
+				});
+				this.$serverAjaxReq(
+					'/userActionLog/insertUserActionLog',
+					sendData,
+					(state, rspMsg, rspData) => {
+						if (state !== "SUCCESS") {
+							return this.$Message.error(rspMsg);
+						}
+						fn && fn()
+
+					}
+				)
+			},
+
+		},
+	}
+</script>
+
+<style scoped src="@/assets/css/visualization.css"></style>
+<style>
+	/*去掉高德水印*/
+	.amap-logo {
+
+		display: none !important;
+
+	}
+
+	.amap-copyright {
+
+		display: none !important;
+
+	}
+
+	.amap-container {
+		background-color: rgb(6, 13, 56) !important;
+	}
+
+	.amap-marker-label {
+		background-color: transparent;
+		border: none;
+		padding: 0;
+	}
+</style>
